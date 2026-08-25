@@ -108,6 +108,7 @@ jobs:
           image: deep-sea-demo:ci
           fail-build: true
           severity-cutoff: high
+          only-fixed: true
           output-format: table
       - name: Generate SBOM
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
