@@ -144,3 +144,43 @@ jobs:
           rules_file_name: .zap/rules.tsv
           allow_issue_writing: false
           fail_action: true
+
+  deploy:
+    name: Deploy to playground (Ankra)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - lint
+      - dockerfile-lint
+      - test
+      - secret-scan
+      - sast
+      - dependency-scan
+      - container-scan
+      - dast
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    environment: playground
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Push image to GHCR with the immutable commit tag
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -t "ghcr.io/ankraio/deep-sea-demo:${GITHUB_SHA}" .
+          docker push "ghcr.io/ankraio/deep-sea-demo:${GITHUB_SHA}"
+      - name: Install Ankra CLI
+        run: |
+          sudo curl -sSL \
+            https://github.com/ankraio/ankra-cli/releases/latest/download/ankra-cli-linux-amd64 \
+            -o /usr/local/bin/ankra
+          sudo chmod +x /usr/local/bin/ankra
+          ankra --version
+      - name: Apply the stack through Ankra
+        env:
+          ANKRA_API_TOKEN: ${{ secrets.ANKRA_API_TOKEN }}
+        run: |
+          sed -i "s/IMAGE_TAG_PLACEHOLDER/${GITHUB_SHA}/" deploy/manifests/deployment.yaml
+          ankra cluster apply -f deploy/cluster.yaml --cluster playground --org demo --wait
+          ankra cluster operations list --cluster playground --org demo | head -5

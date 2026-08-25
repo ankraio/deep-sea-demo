@@ -74,6 +74,22 @@ The scans gate on HIGH and CRITICAL findings: a red run blocks the deploy lane. 
 attack surface small to begin with: zero runtime npm dependencies, a read-only static directory,
 one POST endpoint with strict input validation, and a non-root container with a healthcheck.
 
+## Continuous deployment
+
+When every gate above is green on `main`, the `deploy` job ships the build to an Ankra playground
+cluster at [sea.7bl6jmr0fb.ankra.cc](https://sea.7bl6jmr0fb.ankra.cc):
+
+1. The image is pushed to GHCR tagged with the immutable commit SHA (never `latest`).
+2. The commit SHA is substituted into `deploy/manifests/deployment.yaml`.
+3. `ankra cluster apply -f deploy/cluster.yaml` hands the stack to Ankra's deployment engine,
+   which rolls it out in dependency order (namespace, then deployment, service, ingress) and
+   publishes the hostname the ingress claims.
+
+CI holds two credentials only: the repo-scoped `GITHUB_TOKEN` for the registry push, and a
+least-privilege Ankra API token for the apply. No kubeconfig, no cluster admin, no DNS panel.
+Rolling back is applying the previous commit. The hardened manifests in `deploy/manifests/` go
+through the same Trivy misconfiguration scan as everything else in the repo.
+
 ## Why this repository exists
 
 The point of the blog post is that agents ship safely when the platform provides typed, budgeted,

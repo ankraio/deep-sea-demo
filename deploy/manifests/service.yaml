@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: deep-sea-demo
+  namespace: deep-sea
+  labels:
+    app: deep-sea-demo
+spec:
+  selector:
+    app: deep-sea-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: http

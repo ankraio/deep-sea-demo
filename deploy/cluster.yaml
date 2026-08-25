@@ -1,0 +1,30 @@
+# Applied by the deploy job in .github/workflows/ci.yml after every green
+# main build: CI substitutes IMAGE_TAG_PLACEHOLDER in the deployment manifest
+# with the immutable commit SHA tag it just pushed, then runs
+#   ankra cluster apply -f deploy/cluster.yaml --cluster playground
+# Ankra's deployment engine rolls the stack out in dependency order.
+apiVersion: v1
+kind: ImportCluster
+metadata:
+  name: playground
+  description: Deep Sea Facts demo on the playground cluster
+spec:
+  stacks:
+    - name: deep-sea-demo
+      description: Animated deep sea facts with the Ask Sonar chat
+      manifests:
+        - name: namespace-deep-sea
+          parents: []
+          from_file: "manifests/namespace.yaml"
+        - name: deployment-deep-sea-demo
+          parents:
+            - manifest: namespace-deep-sea
+          from_file: "manifests/deployment.yaml"
+        - name: service-deep-sea-demo
+          parents:
+            - manifest: deployment-deep-sea-demo
+          from_file: "manifests/service.yaml"
+        - name: ingress-deep-sea-demo
+          parents:
+            - manifest: service-deep-sea-demo
+          from_file: "manifests/ingress.yaml"
