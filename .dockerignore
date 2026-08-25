@@ -1,0 +1,12 @@
+.git
+.github
+node_modules
+test
+*.md
+.zap
+.editorconfig
+.prettierrc.json
+.prettierignore
+eslint.config.js
+.yamllint.yml
+package-lock.json

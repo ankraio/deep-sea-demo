@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="An animated tour of deep sea facts, with Sonar, an AI guide running on a private GPU."
+    />
+    <title>Deep Sea Facts</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js" defer></script>
+  </head>
+  <body>
+    <canvas id="ocean" aria-hidden="true"></canvas>
+
+    <main>
+      <header>
+        <p class="badge">A one-prompt demo, shipped on Ankra</p>
+        <h1>Deep Sea Facts</h1>
+        <p class="subtitle">Glass squid, crushing pressure, and lights that never see the sun.</p>
+      </header>
+
+      <section class="fact-card" aria-live="polite">
+        <h2>Did you know?</h2>
+        <p id="fact-text">Loading a fact from the midnight zone...</p>
+        <div class="fact-controls">
+          <button id="next-fact" type="button">Another fact</button>
+          <span id="fact-counter"></span>
+        </div>
+      </section>
+
+      <section class="chat-card">
+        <h2>Ask Sonar anything</h2>
+        <p class="chat-hint">
+          Sonar answers from a GPU we run ourselves. No question leaves our infrastructure.
+        </p>
+        <div id="chat-log" role="log" aria-label="Conversation with Sonar"></div>
+        <form id="chat-form">
+          <label class="visually-hidden" for="chat-input">Your question about the deep sea</label>
+          <input
+            id="chat-input"
+            name="message"
+            type="text"
+            maxlength="500"
+            placeholder="Why do anglerfish glow?"
+            autocomplete="off"
+            required
+          />
+          <button type="submit">Ask</button>
+        </form>
+      </section>
+
+      <footer>
+        <p>
+          Built by an AI agent from a single prompt.
+          <a href="https://ankra.ai/blog/one-prompt-to-a-live-url">Read how it shipped</a> on the
+          Ankra blog.
+        </p>
+      </footer>
+    </main>
+  </body>
+</html>

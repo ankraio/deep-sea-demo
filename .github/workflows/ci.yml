@@ -1,0 +1,145 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint (ESLint, Prettier, yamllint, actionlint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - name: yamllint
+        run: pipx run yamllint .
+      - name: actionlint
+        run: |
+          bash <(curl -sSfL \
+            https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+
+  dockerfile-lint:
+    name: Dockerfile lint (hadolint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+
+  test:
+    name: Unit tests (node --test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  secret-scan:
+    name: Secret scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        run: |
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest \
+            detect --source /repo --no-banner --redact -v
+
+  sast:
+    name: SAST (Semgrep, OWASP Top Ten)
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+      - name: semgrep scan
+        run: semgrep scan --config p/owasp-top-ten --config p/secrets --error --metrics=off
+
+  dependency-scan:
+    name: Dependency and config scan (Trivy fs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+
+  container-scan:
+    name: Image scan (Trivy, Grype) and SBOM (Syft)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t deep-sea-demo:ci .
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: deep-sea-demo:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Grype image scan
+        uses: anchore/scan-action@v5
+        with:
+          image: deep-sea-demo:ci
+          fail-build: true
+          severity-cutoff: high
+          output-format: table
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: deep-sea-demo:ci
+          format: spdx-json
+          output-file: sbom.spdx.json
+          artifact-name: sbom.spdx.json
+
+  dast:
+    name: DAST (OWASP ZAP baseline)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run the container
+        run: |
+          docker build -t deep-sea-demo:ci .
+          docker run -d --name deep-sea-demo -p 8080:8080 deep-sea-demo:ci
+          for _ in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/healthz > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          echo "app never became healthy" >&2
+          docker logs deep-sea-demo >&2
+          exit 1
+      - name: ZAP baseline scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:8080
+          rules_file_name: .zap/rules.tsv
+          allow_issue_writing: false
+          fail_action: true

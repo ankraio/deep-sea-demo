@@ -1,0 +1,23 @@
+{
+  "name": "deep-sea-demo",
+  "version": "1.0.0",
+  "description": "Animated deep sea facts with a private AI guide, shipped from a single prompt on Ankra.",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.6.0"
+  }
+}

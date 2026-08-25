@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.env
+sbom.spdx.json
+report_*.html
+report_*.md
+zap.yaml
