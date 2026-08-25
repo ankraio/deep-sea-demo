@@ -103,7 +103,7 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
       - name: Grype image scan
-        uses: anchore/scan-action@v5
+        uses: anchore/scan-action@v7
         with:
           image: deep-sea-demo:ci
           fail-build: true
