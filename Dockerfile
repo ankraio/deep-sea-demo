@@ -1,5 +1,5 @@
 # Zero runtime dependencies: the image is the Node runtime plus the app files.
-FROM node:22-alpine
+FROM node:25-alpine
 
 # The upstream node:*-alpine images are rebuilt less often than Alpine ships
 # security fixes, so pull any published package updates at build time. Without
