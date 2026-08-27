@@ -1,9 +1,14 @@
 # Zero runtime dependencies: the image is the Node runtime plus the app files.
 FROM node:22-alpine
 
+# The upstream node:*-alpine images are rebuilt less often than Alpine ships
+# security fixes, so pull any published package updates at build time. Without
+# this the image lands with whatever OpenSSL the base was baked against.
+#
 # The app never runs npm at runtime, so drop npm, corepack and yarn from the
-# image: fewer binaries, and none of npm's bundled dependencies to patch.
-RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
+# image too: fewer binaries, and none of npm's bundled dependencies to patch.
+RUN apk upgrade --no-cache \
+    && rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx \
     /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg /opt/yarn*
 
 ENV NODE_ENV=production
