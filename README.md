@@ -76,19 +76,17 @@ one POST endpoint with strict input validation, and a non-root container with a 
 
 ## Continuous deployment
 
-When every gate above is green on `main`, the `deploy` job ships the build to an Ankra playground
-cluster at [sea.7bl6jmr0fb.ankra.cc](https://sea.7bl6jmr0fb.ankra.cc):
+Ankra builds and ships this repository, and `.ankra/pipeline.yaml` is the pipeline of record. On every
+push to `main`, Ankra Pipelines installs and tests the code, builds the image with provenance and an
+SBOM, scans it with Semgrep, Checkov and Trivy, gates on the findings, and publishes an immutable
+`sha-` tag to the organisation's Ankra registry. Ankra then rolls that tag out to the
+`applications-demo` cluster, where the demo runs at
+[deepsea.f6x778iwii.7bl6jmr0fb.ankra.cc](https://deepsea.f6x778iwii.7bl6jmr0fb.ankra.cc), with the
+DNS record and the TLS certificate handled by the platform.
 
-1. The image is pushed to GHCR tagged with the immutable commit SHA (never `latest`).
-2. The commit SHA is substituted into `deploy/manifests/deployment.yaml`.
-3. `ankra cluster apply -f deploy/cluster.yaml` hands the stack to Ankra's deployment engine,
-   which rolls it out in dependency order (namespace, then deployment, service, ingress) and
-   publishes the hostname the ingress claims.
-
-CI holds two credentials only: the repo-scoped `GITHUB_TOKEN` for the registry push, and a
-least-privilege Ankra API token for the apply. No kubeconfig, no cluster admin, no DNS panel.
-Rolling back is applying the previous commit. The hardened manifests in `deploy/manifests/` go
-through the same Trivy misconfiguration scan as everything else in the repo.
+The GitHub Actions gauntlet above still runs on every push and pull request as an independent second
+opinion. Neither path holds a kubeconfig, a cluster-admin credential or a DNS panel, and rolling back is
+deploying the previous `sha-` tag.
 
 ## Why this repository exists
 
