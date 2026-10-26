@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: deep-sea-demo
+  labels:
+    app.kubernetes.io/name: deep-sea-demo
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: deep-sea-demo
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
