@@ -1,0 +1,26 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: deep-sea-demo
+  labels:
+    app.kubernetes.io/name: deep-sea-demo
+  annotations:
+    ankra.io/generated: "true"
+    cert-manager.io/cluster-issuer: ${{ ankra.ingress_tls_issuer }}
+spec:
+  ingressClassName: ${{ ankra.ingress_class }}
+  tls:
+    - hosts:
+        - ${{ ankra.ingress_host }}
+      secretName: deep-sea-demo-tls
+  rules:
+    - host: ${{ ankra.ingress_host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: deep-sea-demo
+                port:
+                  number: 80
