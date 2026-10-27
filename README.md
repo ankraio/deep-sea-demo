@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/ankraio/deep-sea-demo/actions/workflows/codeql.yml/badge.svg)](https://github.com/ankraio/deep-sea-demo/actions/workflows/codeql.yml)
 
 An animated single page of deep sea facts with **Ask Sonar**, an AI chat that answers from a
-private GPU instead of a public AI provider. This is the demo repository from the Ankra blog post
+model we run on our own servers instead of a public AI provider. This is the demo repository from the Ankra blog post
 [One Prompt to a Live URL](https://ankra.ai/blog/one-prompt-to-a-live-url): the whole app was
 built and shipped by an AI agent from a single paragraph, riding the rails of the
 [Ankra](https://ankra.ai) platform.
@@ -25,14 +25,13 @@ code to running container before anything deploys.
   platform provides for the organisation; the deployment engine rolls it out and the DNS and TLS
   lane exposes it.
 
-Configuration comes from three environment variables, typically wired by the deployment from a
-key minted by the LiteLLM token broker of the
-[gpu-chat stack](https://ankra.ai/blog/managed-private-ai-stack-for-developers):
+Configuration comes from three environment variables, set as the application's environment secrets
+in Ankra and pointing at Sonar's own model (see below):
 
 | Variable          | Purpose                                                   |
 | ----------------- | --------------------------------------------------------- |
 | `OPENAI_BASE_URL` | OpenAI-compatible API root, e.g. `https://api.example/v1` |
-| `OPENAI_API_KEY`  | A scoped, budgeted key from the token broker              |
+| `OPENAI_API_KEY`  | The key the model server accepts                          |
 | `MODEL_NAME`      | Served model name (default `qwen3-8b`)                    |
 
 Run it locally:
@@ -87,6 +86,19 @@ DNS record and the TLS certificate handled by the platform.
 The GitHub Actions gauntlet above still runs on every push and pull request as an independent second
 opinion. Neither path holds a kubeconfig, a cluster-admin credential or a DNS panel, and rolling back is
 deploying the previous `sha-` tag.
+
+## Sonar's model
+
+Sonar runs on Qwen3 8B (Apache-2.0, 4-bit GGUF from `Qwen/Qwen3-8B-GGUF` at a pinned revision and
+checksum), served by llama.cpp on a 16 vCPU CPU node of the `demo-cloud` cluster on Ankra Cloud. No
+question leaves our infrastructure. The stack is in `sonar/`: a namespace, the API key as a
+SOPS-sealed Secret, the model volume, the llama.cpp server with thinking mode off, and an HTTPS
+ingress that exposes only `/v1`. Review and deploy it with:
+
+```bash
+ankra cluster draft -f sonar/cluster.yaml --cluster demo-cloud --org demo
+ankra cluster stacks deploy-draft sonar-model --cluster demo-cloud --org demo
+```
 
 ## Why this repository exists
 
