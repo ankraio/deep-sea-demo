@@ -4,14 +4,17 @@
 # opens a reverse tunnel: port 9000 here forwards to llama.cpp there. The page
 # calls it as http://sonar-model. The tunnel user may open only that reverse
 # port (authfile), and only this page's pods may reach it (NetworkPolicy).
-# The control port is 7000: Ankra's application lane adds its own containerPort
-# 8080 (the app's target_port) to the containers it deploys.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: sonar-tunnel
   labels:
     app.kubernetes.io/name: sonar-tunnel
+  annotations:
+    # Keep this Deployment as written: without it Ankra applies the page's deploy
+    # options (target_port, replicas, resources) to it too, and every containerPort
+    # here would be rewritten to 8080.
+    ankra.io/deploy-overrides: "none"
 spec:
   replicas: 1
   selector:
