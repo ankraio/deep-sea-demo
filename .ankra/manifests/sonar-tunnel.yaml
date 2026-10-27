@@ -4,6 +4,9 @@
 # opens a reverse tunnel: port 9000 here forwards to llama.cpp there. The page
 # calls it as http://sonar-model. The tunnel user may open only that reverse
 # port (authfile), and only this page's pods may reach it (NetworkPolicy).
+# Every resource here carries ankra.io/deploy-overrides: "none": without it Ankra
+# applies the page's deploy options (target_port 8080, replicas, resources, its
+# ingress host) to these too.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,9 +14,6 @@ metadata:
   labels:
     app.kubernetes.io/name: sonar-tunnel
   annotations:
-    # Keep this Deployment as written: without it Ankra applies the page's deploy
-    # options (target_port, replicas, resources) to it too, and every containerPort
-    # here would be rewritten to 8080.
     ankra.io/deploy-overrides: "none"
 spec:
   replicas: 1
@@ -108,6 +108,8 @@ metadata:
   name: sonar-tunnel
   labels:
     app.kubernetes.io/name: sonar-tunnel
+  annotations:
+    ankra.io/deploy-overrides: "none"
 spec:
   type: ClusterIP
   selector:
@@ -124,6 +126,8 @@ metadata:
   name: sonar-model
   labels:
     app.kubernetes.io/name: sonar-tunnel
+  annotations:
+    ankra.io/deploy-overrides: "none"
 spec:
   type: ClusterIP
   selector:
@@ -141,6 +145,7 @@ metadata:
   labels:
     app.kubernetes.io/name: sonar-tunnel
   annotations:
+    ankra.io/deploy-overrides: "none"
     cert-manager.io/cluster-issuer: letsencrypt-prod
     external-dns.alpha.kubernetes.io/hostname: sonar-tunnel.f6x778iwii.7bl6jmr0fb.ankra.cc
 spec:
@@ -167,6 +172,8 @@ metadata:
   name: sonar-tunnel
   labels:
     app.kubernetes.io/name: sonar-tunnel
+  annotations:
+    ankra.io/deploy-overrides: "none"
 spec:
   podSelector:
     matchLabels:
