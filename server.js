@@ -13,7 +13,7 @@ const inferenceModel = process.env.MODEL_NAME ?? "qwen3-8b";
 const maxRequestBodyBytes = 4096;
 const maxMessageLength = 500;
 const maxHistoryMessages = 6;
-const upstreamTimeoutMilliseconds = 30_000;
+const upstreamTimeoutMilliseconds = 60_000;
 
 const chatRequestsPerMinute = 10;
 const requestCountsByAddress = new Map();

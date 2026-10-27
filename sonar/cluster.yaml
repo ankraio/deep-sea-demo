@@ -1,0 +1,51 @@
+# Sonar's model: Qwen3 8B served by llama.cpp on a CPU node of the demo-cloud
+# cluster (Ankra Cloud, demo organisation). The deep sea page calls it through
+# OPENAI_BASE_URL with the key in the sealed Secret below.
+#
+# Review and deploy:
+#   ankra cluster draft -f sonar/cluster.yaml --cluster demo-cloud --org demo
+#   ankra cluster stacks deploy-draft sonar-model --cluster demo-cloud --org demo
+# `apply` replaces only the stacks this file names; other stacks on the cluster
+# are untouched.
+apiVersion: v1
+kind: ImportCluster
+metadata:
+  name: demo-cloud
+  description: Sonar's self-hosted model for the Deep Sea Facts demo
+spec:
+  stacks:
+    - name: sonar-model
+      description: Qwen3 8B on llama.cpp for the Ask Sonar chat, on the llm node group
+      manifests:
+        - name: sonar-namespace
+          parents: []
+          from_file: "manifests/namespace.yaml"
+        - name: sonar-api-key
+          parents:
+            - kind: manifest
+              name: sonar-namespace
+          from_file: "manifests/secret.yaml"
+          encrypted_paths:
+            - SONAR_API_KEY
+        - name: sonar-models-volume
+          parents:
+            - kind: manifest
+              name: sonar-namespace
+          from_file: "manifests/pvc.yaml"
+        - name: sonar-llama-server
+          parents:
+            - kind: manifest
+              name: sonar-api-key
+            - kind: manifest
+              name: sonar-models-volume
+          from_file: "manifests/deployment.yaml"
+        - name: sonar-service
+          parents:
+            - kind: manifest
+              name: sonar-llama-server
+          from_file: "manifests/service.yaml"
+        - name: sonar-ingress
+          parents:
+            - kind: manifest
+              name: sonar-service
+          from_file: "manifests/ingress.yaml"

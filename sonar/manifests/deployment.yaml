@@ -1,0 +1,139 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonar-llama-server
+  namespace: sonar
+  labels:
+    app.kubernetes.io/name: sonar-llama-server
+spec:
+  replicas: 1
+  strategy:
+    # One node, one ReadWriteOnce volume: stop the old pod before the new one starts.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sonar-llama-server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sonar-llama-server
+    spec:
+      automountServiceAccountToken: false
+      nodeSelector:
+        ankra.io/role: llm
+      tolerations:
+        - key: dedicated
+          operator: Equal
+          value: llm
+          effect: NoSchedule
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        # Qwen/Qwen3-8B-GGUF at a pinned revision, checked against the file's
+        # published SHA-256. Downloads once; later starts only verify it.
+        - name: fetch-model
+          image: docker.io/library/alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              file=/models/Qwen3-8B-Q4_K_M.gguf
+              sum=d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785
+              if [ -f "$file" ] && echo "$sum  $file" | sha256sum -c -s; then
+                echo "model present and verified"
+                exit 0
+              fi
+              wget -q -O "$file.part" \
+                "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf"
+              echo "$sum  $file.part" | sha256sum -c -s
+              mv "$file.part" "$file"
+              echo "model downloaded and verified"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 500m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: llama-server
+          # yamllint disable-line rule:line-length
+          image: ghcr.io/ggml-org/llama.cpp:server-b11552@sha256:fc9b506e89c1a1cfdd7bc056480f54dc657c1c04d76839a08642dc280b8ed2f6
+          args:
+            - --model
+            - /models/Qwen3-8B-Q4_K_M.gguf
+            - --alias
+            - qwen3-8b
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8080"
+            - --threads
+            - "12"
+            - --ctx-size
+            - "8192"
+            - --parallel
+            - "2"
+            # Answers only: Qwen3's thinking mode would spend the latency budget on hidden reasoning.
+            - --chat-template-kwargs
+            - '{"enable_thinking": false}'
+            - --reasoning-budget
+            - "0"
+            - --no-webui
+          env:
+            - name: LLAMA_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sonar-api-key
+                  key: SONAR_API_KEY
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 20
+            failureThreshold: 6
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "12"
+              memory: 8Gi
+            limits:
+              memory: 12Gi
+          volumeMounts:
+            - name: models
+              mountPath: /models
+              readOnly: true
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: sonar-models
