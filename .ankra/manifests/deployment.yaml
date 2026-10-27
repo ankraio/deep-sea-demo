@@ -65,6 +65,16 @@ spec:
               value: "::"
             - name: PORT
               value: "8080"
+            # Sonar's model: Qwen3 8B on demo-cloud, reached through the sonar-tunnel reverse tunnel.
+            - name: OPENAI_BASE_URL
+              value: "http://sonar-model/v1"
+            - name: MODEL_NAME
+              value: "qwen3-8b"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: deep-sea-demo-env
+                  key: OPENAI_API_KEY
           volumeMounts:
             - name: tmp
               mountPath: /tmp

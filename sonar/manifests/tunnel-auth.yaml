@@ -1,0 +1,25 @@
+# ankra_content_fingerprint: 426c9d45b01692a80fc75870fe1564f79c56ce566cb7485693230b9637d115a3
+apiVersion: v1
+kind: Secret
+metadata:
+    name: sonar-tunnel-auth
+    namespace: sonar
+type: Opaque
+stringData:
+    CHISEL_AUTH: ENC[AES256_GCM,data:iPd5gAxbxCMeMUCZNxkWurYpxOzM+8Rbf64S6w2CgLsC1/yr32ulaTHzl4FlH6Ob3T5VB71Q,iv:NnqOyHCHHjneRjNGBHISLi6W04i1cTtEc0Ke/YQEY4w=,tag:mqJzN+SMWQlTWjyE4GiC7g==,type:str]
+sops:
+    age:
+        - recipient: age1687rsj69s0mnnztvk7naf4waaz8tytgc5lh3d54cqufv04a0jycsfyu0ry
+          enc: |
+            -----BEGIN AGE ENCRYPTED FILE-----
+            YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSBoNHhNN1p2RWZxV1lTTDIy
+            Q3UxOUp5RWxuc0x1WWZTRXV1bmxlL1BacVNrCnI5Y2Nqd0NaRTMvbEI5Ui9NNXhB
+            dEF6NDZXMHRwR3QwQkRQL2NVNnFSZ00KLS0tIHFRUEhMMVE2TlpCaGZCTWdZbmhj
+            c0I1SVZKakdGU1pDalBURVBNblFzUmMKwxJ/b5EXryGJyRPOj5+dQjQJL7qJsDr0
+            rae8csPEjfxHw7HD+DF1LYlRuY+GzPLVs3RbMPl2dqREyxUjRvtX2A==
+            -----END AGE ENCRYPTED FILE-----
+    lastmodified: "2026-10-27T09:54:32Z"
+    mac: ENC[AES256_GCM,data:AlbfpcMLflwKb1EsucyhCj3TxE3tVnNCq+sn5NVS/VqPf/66c0ldSn8V7/5yXLTIbUn5EQkbNQquik6wowmUrT+IO4GS3gOzTtfqwpLHNBBakreeoKBXK97spU86/qYqgAPtjhh/kYGopttDNvof7GeKpT8c1+gDeae4KN3AAtQ=,iv:ezBB02SB9kELQoZCgXoHbyNii3g+VKa/rP/MIRrOuf0=,tag:2VXVFK4yiLCQ73ktBYaoxQ==,type:str]
+    encrypted_regex: ^(CHISEL_AUTH)$
+    mac_only_encrypted: true
+    version: 3.12.2
