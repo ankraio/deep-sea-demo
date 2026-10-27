@@ -121,6 +121,7 @@ spec:
             failureThreshold: 6
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
           resources:
@@ -133,7 +134,12 @@ spec:
             - name: models
               mountPath: /models
               readOnly: true
+            - name: tmp
+              mountPath: /tmp
       volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 1Gi
         - name: models
           persistentVolumeClaim:
             claimName: sonar-models
