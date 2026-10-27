@@ -49,3 +49,6 @@ spec:
             - kind: manifest
               name: sonar-service
           from_file: "manifests/ingress.yaml"
+        - name: sonar-traefik-ipv4
+          parents: []
+          from_file: "manifests/traefik-ipv4.yaml"
