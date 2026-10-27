@@ -1,0 +1,56 @@
+# demo-cloud has no public IPv4 and the deep sea page's cluster has no IPv6, so
+# this client dials out (IPv4 egress works from here) to the chisel server that
+# runs beside the page and opens a reverse tunnel: the page's sonar-model
+# Service on port 9000 forwards to llama.cpp in this namespace. The connection
+# is TLS (Let's Encrypt through Traefik) and authenticated with CHISEL_AUTH.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonar-tunnel-client
+  namespace: sonar
+  labels:
+    app.kubernetes.io/name: sonar-tunnel-client
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sonar-tunnel-client
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sonar-tunnel-client
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: chisel
+          # yamllint disable-line rule:line-length
+          image: docker.io/jpillora/chisel:1.12.0@sha256:e5538d0a8432f53788bf63089d918a4b9979e6df408a2f1aa36575917eacd314
+          args:
+            - client
+            - --keepalive
+            - 25s
+            - https://sonar-tunnel.f6x778iwii.7bl6jmr0fb.ankra.cc
+            - R:0.0.0.0:9000:sonar-llama-server.sonar.svc.cluster.local:80
+          env:
+            - name: AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: sonar-tunnel-auth
+                  key: CHISEL_AUTH
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

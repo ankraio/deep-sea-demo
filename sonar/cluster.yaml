@@ -1,6 +1,7 @@
 # Sonar's model: Qwen3 8B served by llama.cpp on a CPU node of the demo-cloud
 # cluster (Ankra Cloud, demo organisation). The deep sea page calls it through
-# OPENAI_BASE_URL with the key in the sealed Secret below.
+# a reverse tunnel: the chisel client below dials out to the page's cluster
+# (applications-demo) and serves llama.cpp there as http://sonar-model.
 #
 # Review and deploy:
 #   ankra cluster draft -f sonar/cluster.yaml --cluster demo-cloud --org demo
@@ -44,11 +45,17 @@ spec:
             - kind: manifest
               name: sonar-llama-server
           from_file: "manifests/service.yaml"
-        - name: sonar-ingress
+        - name: sonar-tunnel-auth
           parents:
             - kind: manifest
+              name: sonar-namespace
+          from_file: "manifests/tunnel-auth.yaml"
+          encrypted_paths:
+            - CHISEL_AUTH
+        - name: sonar-tunnel-client
+          parents:
+            - kind: manifest
+              name: sonar-tunnel-auth
+            - kind: manifest
               name: sonar-service
-          from_file: "manifests/ingress.yaml"
-        - name: sonar-traefik-ipv4
-          parents: []
-          from_file: "manifests/traefik-ipv4.yaml"
+          from_file: "manifests/tunnel-client.yaml"

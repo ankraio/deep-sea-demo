@@ -25,8 +25,8 @@ code to running container before anything deploys.
   platform provides for the organisation; the deployment engine rolls it out and the DNS and TLS
   lane exposes it.
 
-Configuration comes from three environment variables, set as the application's environment secrets
-in Ankra and pointing at Sonar's own model (see below):
+Configuration comes from three environment variables, set in `.ankra/manifests/deployment.yaml`
+(the key from the application's environment secrets) and pointing at Sonar's own model (see below):
 
 | Variable          | Purpose                                                   |
 | ----------------- | --------------------------------------------------------- |
@@ -92,8 +92,11 @@ deploying the previous `sha-` tag.
 Sonar runs on Qwen3 8B (Apache-2.0, 4-bit GGUF from `Qwen/Qwen3-8B-GGUF` at a pinned revision and
 checksum), served by llama.cpp on a 16 vCPU CPU node of the `demo-cloud` cluster on Ankra Cloud. No
 question leaves our infrastructure. The stack is in `sonar/`: a namespace, the API key as a
-SOPS-sealed Secret, the model volume, the llama.cpp server with thinking mode off, and an HTTPS
-ingress that exposes only `/v1`. Review and deploy it with:
+SOPS-sealed Secret, the model volume and the llama.cpp server with thinking mode off. The model has no
+public endpoint: demo-cloud is IPv6 only and this page's cluster is IPv4 only, so a chisel client in
+the stack dials out over TLS to `sonar-tunnel` (in `.ankra/manifests/`) and opens a reverse tunnel,
+which the page calls as `http://sonar-model`. The tunnel user may open only that one port, and only
+the page's pods may reach it. Review and deploy the model stack with:
 
 ```bash
 ankra cluster draft -f sonar/cluster.yaml --cluster demo-cloud --org demo

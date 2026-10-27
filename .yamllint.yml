@@ -9,6 +9,7 @@ rules:
     ignore: |
       .ankra/ankra.yaml
       sonar/manifests/secret.yaml
+      sonar/manifests/tunnel-auth.yaml
   truthy:
     check-keys: false
   document-start: disable

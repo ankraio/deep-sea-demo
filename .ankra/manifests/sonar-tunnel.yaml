@@ -1,0 +1,183 @@
+# Sonar's model runs on demo-cloud (Ankra Cloud, IPv6 only) and this page runs on
+# applications-demo, whose pods have no IPv6 route. The chisel client in the
+# sonar-model stack dials out from demo-cloud to this server over HTTPS and
+# opens a reverse tunnel: port 9000 here forwards to llama.cpp there. The page
+# calls it as http://sonar-model. The tunnel user may open only that reverse
+# port (authfile), and only this page's pods may reach it (NetworkPolicy).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sonar-tunnel
+  labels:
+    app.kubernetes.io/name: sonar-tunnel
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: sonar-tunnel
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: sonar-tunnel
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: authfile
+          image: docker.io/library/alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              umask 077
+              printf '{"sonar:%s": ["^R:0\\\\.0\\\\.0\\\\.0:9000$"]}\n' "$CHISEL_PASSWORD" > /etc/chisel/users.json
+          env:
+            - name: CHISEL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: deep-sea-demo-env
+                  key: CHISEL_PASSWORD
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              memory: 32Mi
+          volumeMounts:
+            - name: chisel
+              mountPath: /etc/chisel
+      containers:
+        - name: chisel
+          # yamllint disable-line rule:line-length
+          image: docker.io/jpillora/chisel:1.12.0@sha256:e5538d0a8432f53788bf63089d918a4b9979e6df408a2f1aa36575917eacd314
+          args: ["server", "--port", "8080", "--reverse", "--authfile", "/etc/chisel/users.json"]
+          ports:
+            - name: control
+              containerPort: 8080
+              protocol: TCP
+            - name: model
+              containerPort: 9000
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: control
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: control
+            periodSeconds: 20
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: 20m
+              memory: 32Mi
+            limits:
+              memory: 128Mi
+          volumeMounts:
+            - name: chisel
+              mountPath: /etc/chisel
+              readOnly: true
+      volumes:
+        - name: chisel
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonar-tunnel
+  labels:
+    app.kubernetes.io/name: sonar-tunnel
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sonar-tunnel
+  ports:
+    - name: control
+      port: 80
+      targetPort: control
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sonar-model
+  labels:
+    app.kubernetes.io/name: sonar-tunnel
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: sonar-tunnel
+  ports:
+    - name: http
+      port: 80
+      targetPort: model
+      protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sonar-tunnel
+  labels:
+    app.kubernetes.io/name: sonar-tunnel
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    external-dns.alpha.kubernetes.io/hostname: sonar-tunnel.f6x778iwii.7bl6jmr0fb.ankra.cc
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - sonar-tunnel.f6x778iwii.7bl6jmr0fb.ankra.cc
+      secretName: sonar-tunnel-tls
+  rules:
+    - host: sonar-tunnel.f6x778iwii.7bl6jmr0fb.ankra.cc
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sonar-tunnel
+                port:
+                  name: control
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: sonar-tunnel
+  labels:
+    app.kubernetes.io/name: sonar-tunnel
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: sonar-tunnel
+  policyTypes:
+    - Ingress
+  ingress:
+    # The tunnel's control port, reached through Traefik.
+    - ports:
+        - port: 8080
+          protocol: TCP
+    # The model port: only the deep sea page.
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: deep-sea-demo
+      ports:
+        - port: 9000
+          protocol: TCP
