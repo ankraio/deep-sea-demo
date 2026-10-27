@@ -4,6 +4,8 @@
 # opens a reverse tunnel: port 9000 here forwards to llama.cpp there. The page
 # calls it as http://sonar-model. The tunnel user may open only that reverse
 # port (authfile), and only this page's pods may reach it (NetworkPolicy).
+# The control port is 7000: Ankra's application lane adds its own containerPort
+# 8080 (the app's target_port) to the containers it deploys.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -60,10 +62,10 @@ spec:
         - name: chisel
           # yamllint disable-line rule:line-length
           image: docker.io/jpillora/chisel:1.12.0@sha256:e5538d0a8432f53788bf63089d918a4b9979e6df408a2f1aa36575917eacd314
-          args: ["server", "--port", "8080", "--reverse", "--authfile", "/etc/chisel/users.json"]
+          args: ["server", "--port", "7000", "--reverse", "--authfile", "/etc/chisel/users.json"]
           ports:
             - name: control
-              containerPort: 8080
+              containerPort: 7000
               protocol: TCP
             - name: model
               containerPort: 9000
@@ -171,7 +173,7 @@ spec:
   ingress:
     # The tunnel's control port, reached through Traefik.
     - ports:
-        - port: 8080
+        - port: 7000
           protocol: TCP
     # The model port: only the deep sea page.
     - from:
