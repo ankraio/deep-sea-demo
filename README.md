@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/ankraio/deep-sea-demo/actions/workflows/codeql.yml/badge.svg)](https://github.com/ankraio/deep-sea-demo/actions/workflows/codeql.yml)
 
 An animated single page of deep sea facts with **Ask Sonar**, an AI chat that answers from a
-model we run on our own servers instead of a public AI provider. This is the demo repository from the Ankra blog post
+open model we run ourselves on Ankra Cloud in Stockholm, instead of a public AI provider. This is the demo repository from the Ankra blog post
 [One Prompt to a Live URL](https://ankra.ai/blog/one-prompt-to-a-live-url): the whole app was
 built and shipped by an AI agent from a single paragraph, riding the rails of the
 [Ankra](https://ankra.ai) platform.
