@@ -28,6 +28,8 @@ spec:
           from_file: "manifests/secret.yaml"
           encrypted_paths:
             - SONAR_API_KEY
+        # Unused since the model moved to an emptyDir. Kept for now: dropping it
+        # from the stack deletes the PVC and, with reclaim Delete, its volume.
         - name: sonar-models-volume
           parents:
             - kind: manifest
