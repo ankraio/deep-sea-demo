@@ -8,7 +8,7 @@ metadata:
 spec:
   replicas: 1
   strategy:
-    # One node, one ReadWriteOnce volume: stop the old pod before the new one starts.
+    # The llm node fits one server: stop the old pod before the new one starts.
     type: Recreate
   selector:
     matchLabels:
@@ -35,7 +35,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         # Qwen/Qwen3-8B-GGUF at a pinned revision, checked against the file's
-        # published SHA-256. Downloads once; later starts only verify it.
+        # published SHA-256. Each new pod downloads it; a restarted container keeps it.
         - name: fetch-model
           image: docker.io/library/alpine:3.22@sha256:2e0b81d60597f449baa56dc25d355367869d2dca4cd57e866f1e2b52af3eb55f
           command: ["/bin/sh", "-c"]
@@ -140,6 +140,9 @@ spec:
         - name: tmp
           emptyDir:
             sizeLimit: 1Gi
+        # On the node's own disk, not a PersistentVolume. The file can always be
+        # fetched again, and a local-nvme PV is pinned to one VM, so a cluster
+        # restore that replaces the VM leaves the pod Pending for good.
         - name: models
-          persistentVolumeClaim:
-            claimName: sonar-models
+          emptyDir:
+            sizeLimit: 8Gi
