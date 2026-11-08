@@ -6,14 +6,16 @@ import { fileURLToPath } from "node:url";
 const publicDirectory = fileURLToPath(new URL("./public", import.meta.url));
 const port = Number.parseInt(process.env.PORT ?? "8080", 10);
 
-const inferenceBaseUrl = process.env.OPENAI_BASE_URL ?? "";
-const inferenceApiKey = process.env.OPENAI_API_KEY ?? "";
-const inferenceModel = process.env.MODEL_NAME ?? "qwen3-8b";
+const inferenceFromEnvironment = {
+  inferenceBaseUrl: process.env.OPENAI_BASE_URL ?? "",
+  inferenceApiKey: process.env.OPENAI_API_KEY ?? "",
+  inferenceModel: process.env.MODEL_NAME ?? "qwen3-8b",
+  upstreamTimeoutMilliseconds: 60_000,
+};
 
 const maxRequestBodyBytes = 4096;
 const maxMessageLength = 500;
 const maxHistoryMessages = 6;
-const upstreamTimeoutMilliseconds = 60_000;
 
 const chatRequestsPerMinute = 10;
 const requestCountsByAddress = new Map();
@@ -103,7 +105,7 @@ function parseChatRequest(rawBody) {
   return { message, history };
 }
 
-async function handleChatRequest(request, response) {
+async function handleChatRequest(request, response, inference) {
   if (isRateLimited(request.socket.remoteAddress ?? "unknown")) {
     sendJson(response, 429, { error: "Sonar needs a short breather. Try again in a minute." });
     return;
@@ -120,6 +122,8 @@ async function handleChatRequest(request, response) {
     return;
   }
 
+  const { inferenceBaseUrl, inferenceApiKey, inferenceModel, upstreamTimeoutMilliseconds } =
+    inference;
   if (inferenceBaseUrl === "" || inferenceApiKey === "") {
     sendJson(response, 503, {
       error: "Sonar is resting in the abyss: no inference endpoint is configured.",
@@ -148,6 +152,7 @@ async function handleChatRequest(request, response) {
     });
 
     if (!upstreamResponse.ok) {
+      console.error(`Sonar upstream answered HTTP ${upstreamResponse.status}`);
       sendJson(response, 502, { error: "The inference server declined that request." });
       return;
     }
@@ -159,8 +164,14 @@ async function handleChatRequest(request, response) {
       return;
     }
     sendJson(response, 200, { reply });
-  } catch {
-    sendJson(response, 504, { error: "The inference server took too long to answer." });
+  } catch (error) {
+    if (error?.name === "TimeoutError") {
+      console.error(`Sonar upstream timed out after ${upstreamTimeoutMilliseconds} ms`);
+      sendJson(response, 504, { error: "The inference server took too long to answer." });
+      return;
+    }
+    console.error(`Sonar upstream unreachable: ${error?.cause?.code ?? error?.message ?? error}`);
+    sendJson(response, 502, { error: "Sonar can't reach its model right now. Try again later." });
   }
 }
 
@@ -192,14 +203,15 @@ async function handleStaticRequest(request, response) {
   }
 }
 
-export function createApp() {
+export function createApp(inferenceOverrides = {}) {
+  const inference = { ...inferenceFromEnvironment, ...inferenceOverrides };
   return http.createServer(async (request, response) => {
     if (request.method === "GET" && request.url === "/healthz") {
       sendJson(response, 200, { status: "ok" });
       return;
     }
     if (request.method === "POST" && request.url === "/api/chat") {
-      await handleChatRequest(request, response);
+      await handleChatRequest(request, response, inference);
       return;
     }
     if (request.method === "GET" || request.method === "HEAD") {
