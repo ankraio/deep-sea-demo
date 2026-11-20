@@ -42,7 +42,7 @@ spec:
         - name: ankra-registry-pull
       containers:
         - name: deep-sea-demo
-          image: registry.ankra.cloud/org-7b2fedb6-4d79-45fd-b71a-044a2cfddce7/deep-sea-demo:${{ ankra.image_tag }}
+          image: registry.ankra.cloud/org-3b7dccca-0788-4470-9910-19478ae345ae/deep-sea-demo:${{ ankra.image_tag }}
           imagePullPolicy: IfNotPresent
           securityContext:
             readOnlyRootFilesystem: true
@@ -59,22 +59,6 @@ spec:
           env:
             - name: ANKRA_RELEASE
               value: "${{ ankra.image_tag }}"
-            - name: NODE_ENV
-              value: "production"
-            - name: HOST
-              value: "::"
-            - name: PORT
-              value: "8080"
-            # Sonar's model: Qwen3 8B on demo-cloud, reached through the sonar-tunnel reverse tunnel.
-            - name: OPENAI_BASE_URL
-              value: "http://sonar-model/v1"
-            - name: MODEL_NAME
-              value: "qwen3-8b"
-            - name: OPENAI_API_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: deep-sea-demo-env
-                  key: OPENAI_API_KEY
           volumeMounts:
             - name: tmp
               mountPath: /tmp
@@ -99,11 +83,10 @@ spec:
             timeoutSeconds: 3
           resources:
             limits:
-              cpu: 500m
               memory: 512Mi
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 512Mi
       volumes:
         - name: tmp
           emptyDir: {}
